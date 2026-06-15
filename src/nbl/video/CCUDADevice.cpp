@@ -351,6 +351,7 @@ CCUDADevice::CCUDADevice(
 	core::smart_refctd_ptr<CCUDAHandler>&& handler)
 	: m_logger(nullptr)
 	, m_vulkanConnection(std::move(vulkanConnection))
+	, m_physicalDevice(vulkanDevice)
 	, m_virtualArchitecture(virtualArchitecture)
 	, m_valid(false)
 	, m_handler(std::move(handler))

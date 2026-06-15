@@ -103,7 +103,7 @@ cuda_interop::SCUdeviceptr CCUDAExportableMemory::getDeviceptr() const
 	return {};
 }
 
-core::smart_refctd_ptr<IDeviceMemoryAllocation> CCUDAExportableMemory::exportAsMemory(ILogicalDevice*, IDeviceMemoryBacked*) const
+core::smart_refctd_ptr<IDeviceMemoryAllocation> CCUDAExportableMemory::exportAsMemory(ILogicalDevice*, IDeviceMemoryBacked*, core::bitflag<IDeviceMemoryAllocation::E_MEMORY_ALLOCATE_FLAGS>) const
 {
 	return nullptr;
 }

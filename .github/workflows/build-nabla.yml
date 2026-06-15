@@ -76,6 +76,10 @@ jobs:
           key: ${{ steps.cuda.outputs.cache_key }}
           restore-keys: ${{ steps.cuda.outputs.cache_restore_key }}
 
+      - name: Install CUDA Toolkit
+        if: steps.cache-cuda.outputs.cache-hit != 'true'
+        run: python .github/scripts/ci_cuda_toolkit.py install
+
       - name: Verify CUDA Toolkit
         run: python .github/scripts/ci_cuda_toolkit.py verify
 

@@ -53,6 +53,10 @@ def cache_restore_key(version: str) -> str:
     return f"cuda-toolkit-{version}-{platform.system().lower()}-x64-"
 
 
+def windows_install_root(version: str) -> Path:
+    return Path(rf"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v{major_minor(version)}")
+
+
 def emit_outputs() -> None:
     version = cuda_version()
     lines = (
@@ -105,13 +109,43 @@ def verify() -> None:
         raise SystemExit(1)
 
 
+def install() -> None:
+    if platform.system() != "Windows":
+        raise SystemExit("CUDA Toolkit install is only implemented for Windows CI.")
+
+    version = cuda_version()
+    install_root = windows_install_root(version)
+    target_root = Path(cache_root(version))
+
+    if verify_toolkit(target_root, version):
+        print(f"CUDA Toolkit {major_minor(version)} already restored at {target_root}.")
+        return
+
+    result = run(["choco", "install", "cuda", "--version", version, "--yes", "--no-progress"])
+    if result.returncode != 0:
+        raise SystemExit(f"CUDA Toolkit {version} installation failed.")
+
+    if not verify_toolkit(install_root, version):
+        raise SystemExit(f"CUDA Toolkit {major_minor(version)} was not found at {install_root} after installation.")
+
+    target_root.mkdir(parents=True, exist_ok=True)
+    result = run(["robocopy", str(install_root), str(target_root), "/MIR", "/R:2", "/W:2", "/NFL", "/NDL", "/NP"])
+    if result.returncode > 7:
+        raise SystemExit(f"Failed to mirror CUDA Toolkit into cache root. robocopy exit code: {result.returncode}")
+
+    if not verify_toolkit(target_root, version):
+        raise SystemExit(f"CUDA Toolkit {major_minor(version)} was not found at {target_root} after installation.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("outputs", "verify"))
+    parser.add_argument("command", choices=("outputs", "install", "verify"))
     args = parser.parse_args()
 
     if args.command == "outputs":
         emit_outputs()
+    elif args.command == "install":
+        install()
     elif args.command == "verify":
         verify()
 

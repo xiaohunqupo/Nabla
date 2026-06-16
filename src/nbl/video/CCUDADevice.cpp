@@ -293,11 +293,11 @@ core::smart_refctd_ptr<CCUDAImportedSemaphore> CCUDADevice::importExternalSemaph
 	}
 
 	auto& cu = m_handler->getCUDAFunctionTable();
-	auto handleType = semaphore->getCreationParams().externalHandleTypes.value;
+	const auto handleTypes = semaphore->getCreationParams().externalHandleTypes;
 
-	if (handleType != CCUDADevice::ExternalSemaphoreHandleType)
+	if (!handleTypes.hasFlags(CCUDADevice::ExternalSemaphoreHandleType))
 	{
-		logFail("Required semaphore handle type 0x%x not present in semaphore handleTypes 0x%x", handleType);
+		logFail("Required semaphore handle type 0x%x not present in semaphore handleTypes 0x%x", CCUDADevice::ExternalSemaphoreHandleType, handleTypes.value);
 		return nullptr;
 	}
 

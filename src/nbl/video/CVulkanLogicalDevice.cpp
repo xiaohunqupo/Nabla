@@ -61,10 +61,15 @@ core::smart_refctd_ptr<ISemaphore> CVulkanLogicalDevice::createSemaphore(ISemaph
     // TODO(kevin) : Handle importing external semaphore into Vulkan
     // VkImportSemaphoreWin32HandleInfoKHR importInfo = { VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR };
 
-    if (creationParams.externalHandleTypes && creationParams.externalHandleTypes != ISemaphore::EHT_OPAQUE_WIN32)
+    constexpr auto SupportedExternalSemaphoreHandleType =
+#ifdef _WIN32
+        ISemaphore::EHT_OPAQUE_WIN32;
+#else
+        ISemaphore::EHT_OPAQUE_FD;
+#endif
+    if (creationParams.externalHandleTypes && creationParams.externalHandleTypes != SupportedExternalSemaphoreHandleType)
     {
-        // We haven't tested other externalHandleType, so for now we only support EHT_OPAQUE_WIN32 handle type. WIN32_KMT definitely don't work with our implementation. They don't support DuplicateHandle and CloseHandle.
-        m_logger.log("Only EHT_OPAQUE_WIN32 external handle type currently supported",system::ILogger::ELL_ERROR);
+        m_logger.log("Only external semaphore handle type 0x%08x currently supported",system::ILogger::ELL_ERROR,SupportedExternalSemaphoreHandleType);
         return nullptr;
     }
 
@@ -213,10 +218,15 @@ IDeviceMemoryAllocator::SAllocation CVulkanLogicalDevice::allocate(const SAlloca
     if (info.memoryTypeIndex>=m_physicalDevice->getMemoryProperties().memoryTypeCount)
         return {};
 
-    if (info.externalHandleTypes && info.externalHandleTypes != IDeviceMemoryAllocation::EHT_OPAQUE_WIN32)
+    constexpr auto SupportedExternalMemoryHandleType =
+#ifdef _WIN32
+        IDeviceMemoryAllocation::EHT_OPAQUE_WIN32;
+#else
+        IDeviceMemoryAllocation::EHT_OPAQUE_FD;
+#endif
+    if (info.externalHandleTypes && info.externalHandleTypes != SupportedExternalMemoryHandleType)
     {
-        // We haven't tested other externalHandleType, so for now we only support EHT_OPAQUE_WIN32 handle type. WIN32_KMT definitely don't work with our implementation. They don't support DuplicateHandle and CloseHandle.
-        m_logger.log("Only EHT_OPAQUE_WIN32 external handle type currently supported",system::ILogger::ELL_ERROR);
+        m_logger.log("Only external memory handle type 0x%08x currently supported",system::ILogger::ELL_ERROR,SupportedExternalMemoryHandleType);
         return {};
     }
 
@@ -247,13 +257,13 @@ IDeviceMemoryAllocator::SAllocation CVulkanLogicalDevice::allocate(const SAlloca
 #else
     if (!isValidHandleType)
     {
-        m_logger.log("External semaphore handle type 0x%08x is not a valid Unix handle type", system::ILogger::ELL_ERROR, info.externalHandleType);
+        m_logger.log("External memory handle type 0x%08x is not a valid Unix handle type", system::ILogger::ELL_ERROR, info.externalHandleTypes.value);
         return {};
     }
 
     VkImportMemoryFdInfoKHR importInfo = {
         .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
-        .handleType = static_cast<VkExternalMemoryHandleTypeFlagBits>(info.externalHandleType),
+        .handleType = static_cast<VkExternalMemoryHandleTypeFlagBits>(info.externalHandleTypes.value),
         .fd = info.importHandle,
     };
 #endif
@@ -278,7 +288,7 @@ IDeviceMemoryAllocator::SAllocation CVulkanLogicalDevice::allocate(const SAlloca
 #ifdef _WIN32
             importInfo.handle = externalHandles[0];
 #else
-            importInfo.fd = externalHandle;
+            importInfo.fd = externalHandles[0];
 #endif
             *pNext = &importInfo;
         }
